@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>لوحة الحملات</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#f5f6f8; --card:#fff; --ink:#1b2133; --muted:#6b7385; --line:#e6e8ee;
+  --accent:#c2185b; --accent-soft:#fce4ec; --good:#1e8e5a; --bad:#c62828; --warn:#b26a00;
+  --navy:#1f2a44; --radius:14px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans Arabic",Tahoma,sans-serif;font-size:14px}
+header{background:var(--navy);color:#fff;padding:14px 24px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+header h1{font-size:18px;margin:0 0 0 16px;font-weight:700}
+header select{min-width:220px}
+.spacer{flex:1}
+select,input,textarea,button{font-family:inherit;font-size:14px}
+select,input,textarea{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff;color:var(--ink)}
+button{border:0;border-radius:10px;padding:9px 16px;cursor:pointer;font-weight:600;background:var(--accent);color:#fff}
+button.ghost{background:transparent;color:inherit;border:1px solid rgba(255,255,255,.35)}
+button.light{background:#fff;color:var(--ink);border:1px solid var(--line)}
+button.danger{background:#fff;color:var(--bad);border:1px solid #f3c7c7}
+button:disabled{opacity:.5;cursor:default}
+.status{font-size:12px;opacity:.85}
+nav{display:flex;gap:4px;padding:0 24px;background:#fff;border-bottom:1px solid var(--line);overflow-x:auto}
+nav a{padding:14px 16px;cursor:pointer;color:var(--muted);font-weight:600;border-bottom:3px solid transparent;white-space:nowrap}
+nav a.on{color:var(--accent);border-color:var(--accent)}
+main{padding:24px;max-width:1400px;margin:0 auto}
+.tab{display:none}.tab.on{display:block}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:20px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+.kpi .l{color:var(--muted);font-size:13px}
+.kpi .v{font-size:26px;font-weight:700;margin:6px 0 2px;direction:ltr;text-align:right}
+.kpi .d{font-size:12px;color:var(--good);direction:ltr;text-align:right}
+.kpi .d.zero{color:var(--muted)}
+.grid2{display:grid;grid-template-columns:2fr 1fr;gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:16px}
+.card h3{margin:0 0 14px;font-size:15px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+table{width:100%;border-collapse:collapse}
+th,td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{color:var(--muted);font-weight:600;font-size:13px;cursor:pointer;user-select:none;background:#fafbfc;position:sticky;top:0}
+th.sorted{color:var(--accent)}
+td.n{direction:ltr;text-align:right;font-variant-numeric:tabular-nums}
+.tablewrap{overflow:auto;max-height:70vh}
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:600}
+.b-ok{background:#e3f4ec;color:var(--good)}.b-err{background:#fdeaea;color:var(--bad)}.b-pend{background:#fff4e0;color:var(--warn)}
+.rank{display:inline-flex;width:28px;height:28px;border-radius:50%;align-items:center;justify-content:center;background:#eef0f4;font-weight:700}
+.rank.r1{background:#f6c445;color:#5a4300}.rank.r2{background:#d5d9e0}.rank.r3{background:#e8b48a;color:#5a2f10}
+.handle{font-weight:600;direction:ltr;display:inline-block}
+.sub{color:var(--muted);font-size:12px}
+.desc{max-width:280px;overflow:hidden;text-overflow:ellipsis;color:var(--muted);font-size:12px}
+a.link{color:var(--accent);text-decoration:none}
+.up{color:var(--good);font-size:12px}
+textarea{width:100%;min-height:220px;direction:ltr;text-align:left;font-family:Consolas,monospace;font-size:13px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;max-height:200px;overflow:auto}
+.chip{border:1px solid var(--line);border-radius:20px;padding:6px 12px;cursor:pointer;background:#fff;font-size:13px}
+.chip.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+.empty{text-align:center;color:var(--muted);padding:60px 20px}
+.progress{height:6px;background:rgba(255,255,255,.2);border-radius:4px;overflow:hidden;width:140px}
+.progress i{display:block;height:100%;background:#fff;width:0}
+.toast{position:fixed;bottom:20px;left:20px;background:var(--navy);color:#fff;padding:12px 18px;border-radius:10px;display:none;z-index:9}
+.chartbox{position:relative;height:300px}
+.alert{border-radius:var(--radius);padding:14px 18px;margin-bottom:12px;border:1px solid}
+.alert.bad{background:#fdeaea;border-color:#f3c7c7;color:#8a1c1c}.alert.warn{background:#fff4e0;border-color:#f3dcb0;color:#7a4a00}
+.alert b{display:block;margin-bottom:4px}.alert .sub{color:inherit;opacity:.85}
+.flag{display:inline-block;background:#fff4e0;color:var(--warn);border-radius:6px;padding:0 6px;font-size:11px;font-weight:700;margin-inline-start:4px}
+.flag.bad{background:#fdeaea;color:var(--bad)}
+td.edit{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+.er-hi{color:var(--good);font-weight:700}.er-mid{color:var(--warn);font-weight:700}.er-lo{color:var(--bad);font-weight:700}
+tr.sub-row td{background:#fafbfc;padding:6px 8px 14px}
+.vlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.vlist a{display:block;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff;color:var(--ink);text-decoration:none;font-size:12px;white-space:normal}
+.vlist a b{direction:ltr;display:inline-block}
+dialog{border:0;border-radius:var(--radius);padding:24px;min-width:340px}
+dialog::backdrop{background:rgba(0,0,0,.35)}
+@media(max-width:900px){.grid2{grid-template-columns:1fr}main{padding:16px}header{padding:12px 16px}}
+</style>
+</head>
+<body>
+<style>
+#gate{position:fixed;inset:0;z-index:50;background:#1f2a44;display:flex;align-items:center;justify-content:center;padding:16px}
+#gate form{background:#fff;padding:28px;border-radius:16px;width:min(340px,100%);box-sizing:border-box}
+#gate h1{margin:0 0 6px;font-size:20px;color:#1b2133}#gate p{color:#6b7385;margin:0 0 18px;font-size:14px}
+#gate input{width:100%;box-sizing:border-box;padding:12px;margin-bottom:12px}#gate button{width:100%;padding:12px}
+#gate .e{color:#c62828;font-size:13px;margin-bottom:10px;display:none}
+body.static [onclick*="newCampaign"],body.static [onclick*="refreshNow"],body.static [onclick*="openSettings"],
+body.static [onclick*="copyShare"],body.static [onclick*="exportXlsx"],body.static nav a[data-t="add"],
+body.static [onclick*="editVideo"],body.static [onclick*="delVideo"],body.static [onclick*="renameAcct"],
+body.static [onclick*="delAcct"],body.static [onclick*="retryFailed"],body.static [onclick*="refreshAccounts"],
+body.static [onclick*="addAccounts"],body.static [href*="/api/"],body.static [onclick*="/api/"],
+body.static #t-accounts > .card:first-child,body.static #prog{display:none!important}
+body.static td.edit{pointer-events:none;text-decoration:none}
+</style>
+<div id="gate"><form id="gateForm"><h1>لوحة أداء الحملات</h1><p>أدخل كلمة المرور</p>
+<div class="e" id="gateErr">كلمة المرور غير صحيحة</div>
+<input type="password" id="gatePw" autofocus placeholder="كلمة المرور"><button>دخول</button></form></div>
+<script>
+(function(){
+  const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  async function open(pw){
+    const enc = await (await fetch("data.enc?t=" + Date.now(), {cache: "no-store"})).json();
+    const key = await crypto.subtle.deriveKey({name: "PBKDF2", salt: b64(enc.salt), iterations: enc.iter, hash: "SHA-256"},
+      await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]),
+      {name: "AES-GCM", length: 256}, false, ["decrypt"]);
+    const plain = await crypto.subtle.decrypt({name: "AES-GCM", iv: b64(enc.iv)}, key, b64(enc.ct));
+    return JSON.parse(new TextDecoder().decode(plain));
+  }
+  function serve(D){
+    return async (url) => {
+      const u = new URL(url, location.href), p = u.pathname.replace(/^.*\/api\//, "/api/");
+      let m;
+      if (p === "/api/campaigns") return D.campaigns;
+      if (p === "/api/status") return {running: false, done: 0, total: 0, last_finished: D.exported_at, interval_hours: D.interval_hours, public_url: null};
+      if (p === "/api/accounts") return {accounts: D.accounts, status: {running: false, done: 0, total: 0}};
+      if ((m = p.match(/^\/api\/campaigns\/(\d+)\/summary$/))) return D.summaries[m[1]];
+      if ((m = p.match(/^\/api\/campaigns\/(\d+)\/timeline$/))) return (D.timelines[m[1]] || {})[u.searchParams.get("group") || "author"] || [];
+      throw new Error("هذه النسخة للعرض فقط");
+    };
+  }
+  async function go(pw, silent){
+    try {
+      const D = await open(pw);
+      window.__STATIC__ = serve(D);
+      document.body.classList.add("static");
+      try { localStorage.gatePw = pw; } catch (e) {}
+      document.getElementById("gate").remove();
+      window.__startApp && window.__startApp();
+    } catch (e) {
+      if (!silent) document.getElementById("gateErr").style.display = "block";
+    }
+  }
+  document.getElementById("gateForm").onsubmit = e => { e.preventDefault(); go(document.getElementById("gatePw").value); };
+  let saved = null; try { saved = localStorage.gatePw; } catch (e) {}
+  if (saved) window.addEventListener("load", () => go(saved, true));
+})();
+</script>
+
+<header>
+  <h1>لوحة أداء الحملات</h1>
+  <select id="camp"></select>
+  <button class="ghost" onclick="newCampaign()">+ حملة جديدة</button>
+  <div class="spacer"></div>
+  <button class="ghost" id="btnShare" style="display:none" onclick="copyShare()">🔗 نسخ رابط المشاركة</button>
+  <div class="status" id="statusText"></div>
+  <div class="progress" id="prog" style="display:none"><i></i></div>
+  <button class="ghost" id="btnRefresh" onclick="refreshNow()">تحديث الآن</button>
+  <button onclick="exportXlsx()">تصدير Excel</button>
+  <button class="ghost" onclick="openSettings()">⚙</button>
+</header>
+<nav id="nav">
+  <a data-t="overview" class="on">نظرة عامة</a>
+  <a data-t="influencers">ترتيب المؤثرين</a>
+  <a data-t="clients">ترتيب العملاء</a>
+  <a data-t="videos">الفيديوهات</a>
+  <a data-t="compare">المقارنة</a>
+  <a data-t="add">إضافة روابط</a>
+  <a data-t="accounts">تحليل الحسابات</a>
+</nav>
+<main>
+  <div id="noCamp" class="empty" style="display:none">
+    <h2>ابدأ بإنشاء أول حملة</h2>
+    <p>أنشئ حملة ثم الصق روابط فيديوهات تيك توك، وستتحدث الأرقام تلقائيًا.</p>
+    <button onclick="newCampaign()">+ حملة جديدة</button>
+  </div>
+
+  <section class="tab on" id="t-overview">
+    <div id="alerts"></div>
+    <div class="kpis" id="kpis"></div>
+    <div class="grid2">
+      <div class="card"><h3>نمو الحملة عبر الوقت</h3>
+        <div class="row"><select id="tlMetric" onchange="drawTimeline()"></select></div>
+        <div class="chartbox"><canvas id="cTimeline"></canvas></div></div>
+      <div class="card"><h3>أعلى المؤثرين مشاهدةً</h3><div class="chartbox"><canvas id="cTop"></canvas></div></div>
+    </div>
+  </section>
+
+  <section class="tab" id="t-influencers">
+    <div class="card">
+      <div class="row"><span>الترتيب حسب:</span><select id="rankBy" onchange="renderInfl()"></select><div class="spacer"></div><span class="sub" id="inflNote"></span></div>
+      <div class="tablewrap"><table id="tInfl"></table></div>
+    </div>
+  </section>
+
+  <section class="tab" id="t-clients">
+    <div class="card">
+      <div class="row"><span>الترتيب حسب:</span><select id="rankByC" onchange="renderClients()"></select></div>
+      <div class="tablewrap"><table id="tClients"></table></div>
+    </div>
+  </section>
+
+  <section class="tab" id="t-videos">
+    <div class="card">
+      <div class="row">
+        <input id="vSearch" placeholder="بحث بالاسم أو الحساب أو الوصف…" oninput="renderVideos()" style="min-width:260px">
+        <select id="vClient" onchange="renderVideos()"><option value="">كل العملاء</option></select>
+        <select id="vFilter" onchange="renderVideos()"><option value="">كل الحالات</option><option value="ok">تم</option><option value="error">خطأ</option><option value="pending">بانتظار الجلب</option></select>
+        <div class="spacer"></div><span class="sub" id="vCount"></span>
+        <button class="light" onclick="retryFailed()">إعادة جلب المتعثرة</button>
+      </div>
+      <div class="tablewrap"><table id="tVideos"></table></div>
+    </div>
+  </section>
+
+  <section class="tab" id="t-compare">
+    <div class="card">
+      <div class="row">
+        <select id="cmpMode" onchange="cmpSel.clear();renderCompareChips()"><option value="author">مقارنة المؤثرين</option><option value="client">مقارنة العملاء</option><option value="video">مقارنة الفيديوهات</option></select>
+        <select id="cmpMetric" onchange="drawCompare()"></select>
+        <button class="light" onclick="cmpSel.clear();renderCompareChips()">مسح الاختيار</button>
+        <span class="sub">اختر عنصرين أو أكثر</span>
+      </div>
+      <div class="chips" id="cmpChips"></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><h3>النمو عبر الوقت</h3><div class="chartbox"><canvas id="cCmpLine"></canvas></div></div>
+      <div class="card"><h3>الأرقام الحالية</h3><div class="chartbox"><canvas id="cCmpBar"></canvas></div></div>
+    </div>
+    <div class="card"><h3>جدول المقارنة</h3><div class="tablewrap"><table id="tCmp"></table></div></div>
+  </section>
+
+  <section class="tab" id="t-accounts">
+    <div class="card">
+      <h3>تحليل حسابات المؤثرين قبل الحملة</h3>
+      <p class="sub" style="margin-top:-6px">اكتب الحسابات، كل حساب في سطر: <span class="handle">@user</span> أو رابط الحساب أو رابط أي فيديو منه. تقدر تلصق من Excel (الاسم + الحساب).</p>
+      <textarea id="acctText" style="min-height:120px" placeholder="@rana_1615&#10;https://www.tiktok.com/@aq.uv0"></textarea>
+      <div class="row" style="margin-top:12px">
+        <button onclick="addAccounts()">تحليل</button><span class="sub" id="acctMsg"></span>
+        <div class="spacer"></div><span class="sub" id="acctProg"></span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row">
+        <span>عرض متوسط:</span>
+        <select id="acctWin" onchange="renderAccounts()"><option value="w5">آخر 5 فيديوهات</option><option value="w7">آخر 7 فيديوهات</option></select>
+        <input id="acctSearch" placeholder="بحث…" oninput="renderAccounts()">
+        <div class="spacer"></div>
+        <button class="light" onclick="refreshAccounts(true)">إعادة فحص المتعثرة</button>
+        <button class="light" onclick="refreshAccounts(false)">إعادة فحص الكل</button>
+        <button class="light" onclick="location.href='/api/accounts/export'">تصدير Excel</button>
+      </div>
+      <p class="sub" style="margin:-4px 0 12px">التفاعل = (إعجابات + تعليقات + مشاركات + حفظ) ÷ المشاهدات · الوسيط = المشاهدات في منتصف الفيديوهات لما ترتبها · «تعليقات عربية» = تعليقات فيها حروف عربية · «إيموجي فقط» = تعليقات بدون أي حروف · اضغط «التفاصيل» تشوف كل فيديو وكل تعليق ومين كتبه.</p>
+      <div class="tablewrap"><table id="tAcct"></table></div>
+    </div>
+  </section>
+
+  <section class="tab" id="t-add">
+    <div class="card">
+      <h3>رفع ملف Excel</h3>
+      <p class="sub" style="margin-top:-6px">ملف فيه عمود للروابط، ويُفضّل عمود «الاسم» وعمود «العميل» — تُقرأ تلقائيًا من عناوين الأعمدة.</p>
+      <div class="row"><input type="file" id="xfile" accept=".xlsx,.xlsm"><button onclick="importXlsx()">استيراد وجلب البيانات</button><span class="sub" id="impMsg"></span></div>
+    </div>
+    <div class="card">
+      <h3>أو الصق الروابط</h3>
+      <p class="sub" style="margin-top:-6px">رابط في كل سطر. ويمكن نسخ صفوف من Excel مباشرة (الاسم، العميل، الرابط).</p>
+      <textarea id="urls" placeholder="https://www.tiktok.com/@user/video/123...&#10;https://vt.tiktok.com/XXXX/"></textarea>
+      <div class="row" style="margin-top:12px"><button onclick="addUrls()">إضافة وجلب البيانات</button><span class="sub" id="addMsg"></span></div>
+    </div>
+    <div class="card">
+      <h3>إدارة الحملة</h3>
+      <div class="row">
+        <button class="light" onclick="renameCampaign()">تغيير اسم الحملة</button>
+        <button class="light" onclick="toggleArchive()" id="btnArchive">أرشفة (إيقاف التحديث التلقائي)</button>
+        <button class="danger" onclick="deleteCampaign()">حذف الحملة نهائيًا</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<dialog id="dlgSettings">
+  <h3 style="margin-top:0">الإعدادات</h3>
+  <p>التحديث التلقائي كل:</p>
+  <select id="interval">
+    <option value="1">ساعة</option><option value="3">3 ساعات</option><option value="6">6 ساعات</option>
+    <option value="12">12 ساعة</option><option value="24">24 ساعة</option>
+  </select>
+  <p class="sub">يعمل التحديث التلقائي ما دامت المنصة مفتوحة على الجهاز. الحملات المؤرشفة لا تُحدَّث.</p>
+  <div class="row" style="margin-top:18px"><button onclick="saveSettings()">حفظ</button><button class="light" onclick="dlgSettings.close()">إلغاء</button></div>
+  <hr style="border:0;border-top:1px solid var(--line);margin:20px 0">
+  <p style="margin-top:0">تغيير كلمة المرور:</p>
+  <div class="row"><input type="password" id="pwOld" placeholder="الحالية"><input type="password" id="pwNew" placeholder="الجديدة (6 أحرف أو أكثر)"></div>
+  <div class="row"><button class="light" onclick="changePw()">تغيير</button><div class="spacer"></div><a class="link" href="/logout">تسجيل الخروج</a></div>
+</dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+const M = ["views","likes","comments","shares","saves"];
+const AR = {views:"المشاهدات",likes:"الإعجابات",comments:"التعليقات",shares:"المشاركات",saves:"الحفظ",er:"معدل التفاعل %",videos:"عدد الفيديوهات",avg_views:"متوسط المشاهدات",d24_views:"نمو المشاهدات 24س",likes_k:"إعجابات لكل 1000 مشاهدة"};
+const PALETTE = ["#c2185b","#1f6feb","#1e8e5a","#e67700","#7b3fe4","#0b8c9a","#d6336c","#5c6b8a","#a0522d","#2f9e44"];
+let campaigns=[], cid=null, S=null, charts={}, sort={infl:null, videos:{k:"views",d:-1}}, cmpSel=new Set(), groupTL={};
+
+const $ = id => document.getElementById(id);
+const fmt = n => n==null ? "—" : Number(n).toLocaleString("en-US");
+const short = n => { n=Number(n)||0; const a=Math.abs(n);
+  return a>=1e6 ? (n/1e6).toFixed(a>=1e7?1:2).replace(/\.0+$/,"")+"M" : a>=1e4 ? (n/1e3).toFixed(1).replace(/\.0$/,"")+"K" : n.toLocaleString("en-US"); };
+const esc = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const api = async (url, opt={}) => { if(window.__STATIC__) return window.__STATIC__(url, opt); const r = await fetch(url, {headers:{"Content-Type":"application/json"}, ...opt});
+  if(r.status===401){ location.href="/login"; throw new Error("سجّل الدخول"); }
+  const j = await r.json().catch(()=>({})); if(!r.ok) throw new Error(j.error||"خطأ"); return j; };
+let shareUrl=null;
+async function copyShare(){ try{ await navigator.clipboard.writeText(shareUrl); toast("تم نسخ الرابط: "+shareUrl); }catch(e){ prompt("انسخ الرابط:",shareUrl); } }
+async function changePw(){ try{ await api("/api/password",{method:"POST",body:JSON.stringify({old:$("pwOld").value,new:$("pwNew").value})});
+  $("pwOld").value=$("pwNew").value=""; toast("تم تغيير كلمة المرور — الأجهزة الثانية بتحتاج تسجل دخول من جديد"); }catch(e){ toast(e.message); } }
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.style.display="block"; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display="none",3500); }
+
+// selects
+for (const m of M){ $("tlMetric").add(new Option(AR[m],m)); $("cmpMetric").add(new Option(AR[m],m)); }
+$("cmpMetric").add(new Option(AR.er,"er"));
+for (const k of ["views","likes","comments","shares","saves","er","likes_k","avg_views","d24_views","videos"]){ $("rankBy").add(new Option(AR[k],k)); $("rankByC").add(new Option(AR[k],k)); }
+const who = g => (g.names&&g.names.length ? g.names.join("، ") : g.nickname) || "@"+g.author;
+
+document.querySelectorAll("nav a").forEach(a=>a.onclick=()=>{
+  document.querySelectorAll("nav a").forEach(x=>x.classList.toggle("on",x===a));
+  document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x.id==="t-"+a.dataset.t));
+  try{localStorage.tab=a.dataset.t}catch(e){}
+  if(a.dataset.t==="compare") renderCompareChips();
+  if(a.dataset.t==="accounts") loadAccounts();
+});
+
+async function loadCampaigns(selectId){
+  campaigns = await api("/api/campaigns");
+  const sel=$("camp"); sel.innerHTML="";
+  for (const c of campaigns) sel.add(new Option(c.name+(c.archived?" (مؤرشفة)":"")+` · ${c.n} فيديو`, c.id));
+  const has = campaigns.length>0;
+  $("noCamp").style.display = has?"none":"block";
+  document.querySelectorAll(".tab").forEach(x=>x.style.visibility=has?"":"hidden");
+  $("nav").style.display = has?"":"none";
+  if(!has){ cid=null; return; }
+  let want = selectId || cid; try{ want = want || +localStorage.cid }catch(e){}
+  cid = campaigns.some(c=>c.id==want) ? +want : campaigns[0].id;
+  sel.value = cid;
+  await loadSummary();
+}
+$("camp").onchange = e => { cid=+e.target.value; try{localStorage.cid=cid}catch(_){}; groupTL={}; cmpSel.clear(); loadSummary(); };
+
+async function loadSummary(){
+  if(!cid) return;
+  S = await api(`/api/campaigns/${cid}/summary`);
+  groupTL = {};
+  $("btnArchive").textContent = S.campaign.archived ? "إلغاء الأرشفة (تفعيل التحديث)" : "أرشفة (إيقاف التحديث التلقائي)";
+  const vc=$("vClient"), keep=vc.value; vc.length=1;
+  for (const c of S.clients) vc.add(new Option(c.key,c.key));
+  vc.value = S.clients.some(c=>c.key===keep) ? keep : "";
+  renderKpis(); drawTimeline(); drawTop(); renderInfl(); renderClients(); renderVideos();
+  if($("t-compare").classList.contains("on")) renderCompareChips();
+}
+
+function renderKpis(){
+  const t=S.totals, d=S.d24;
+  const tile=(l,v,dv,isPct)=>`<div class="kpi"><div class="l">${l}</div><div class="v">${isPct?v+"%":short(v)}</div>
+    <div class="d ${dv?"":"zero"}">${dv==null?"&nbsp;":(dv>0?"+"+short(dv)+" · 24h":"لا تغيير خلال 24 ساعة")}</div></div>`;
+  $("kpis").innerHTML = M.map(m=>tile(AR[m],t[m],d[m])).join("")
+    + tile("معدل التفاعل",t.er,null,true) + tile("الفيديوهات",t.videos,null) + tile("المؤثرون",t.influencers,null)
+    + (t.clients ? tile("العملاء",t.clients,null) : "")
+    + (t.cost ? tile("إجمالي التكلفة",t.cost,null) + `<div class="kpi"><div class="l">تكلفة الألف مشاهدة</div><div class="v">${t.cpm}</div><div class="d zero">تكلفة التفاعل: ${t.cpe}</div></div>` : "");
+  const gone=S.videos.filter(v=>S.alerts.gone.includes(v.id));
+  $("alerts").innerHTML = gone.length?`<div class="alert bad"><b>${gone.length} فيديو حُذف أو صار خاص بعد ما كان منشور</b><span class="sub">${gone.map(v=>esc(v.name||"@"+v.author)+(v.client?" ("+esc(v.client)+")":"")).join("، ")}</span></div>`:"";
+}
+const money = n => n==null||n===0 ? "—" : Number(n).toLocaleString("en-US",{maximumFractionDigits:2});
+
+function chart(id, cfg){ if(charts[id]) charts[id].destroy(); charts[id]=new Chart($(id), cfg); }
+const baseOpts = (extra={}) => ({responsive:true, maintainAspectRatio:false, interaction:{mode:"index",intersect:false},
+  plugins:{legend:{labels:{font:{family:"IBM Plex Sans Arabic"}}}, tooltip:{rtl:true, callbacks:{label:c=>` ${c.dataset.label}: ${fmt(c.parsed.y ?? c.parsed.x)}`}}},
+  scales:{y:{ticks:{callback:v=>short(v)}}, x:{ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:8}}}, ...extra});
+const tsLabel = ts => { const d=new Date(ts.replace(" ","T")); return d.toLocaleDateString("ar-SA-u-nu-latn",{day:"numeric",month:"short"})+" "+ts.slice(11,16); };
+
+function drawTimeline(){
+  if(!S) return; const m=$("tlMetric").value;
+  chart("cTimeline",{type:"line",data:{labels:S.timeline.map(p=>tsLabel(p.ts)),
+    datasets:[{label:AR[m],data:S.timeline.map(p=>p[m]),borderColor:PALETTE[0],backgroundColor:"rgba(194,24,91,.08)",fill:true,tension:.3,pointRadius:2}]},
+    options:baseOpts({plugins:{legend:{display:false},tooltip:{rtl:true,callbacks:{label:c=>` ${fmt(c.parsed.y)}`}}}})});
+}
+function drawTop(){
+  const top=S.influencers.slice(0,8);
+  chart("cTop",{type:"bar",data:{labels:top.map(g=>who(g).slice(0,20)),datasets:[{label:AR.views,data:top.map(g=>g.views),backgroundColor:PALETTE[0],borderRadius:6}]},
+    options:baseOpts({indexAxis:"y",plugins:{legend:{display:false},tooltip:{rtl:true,callbacks:{label:c=>` ${fmt(c.parsed.x)}`}}},
+      scales:{x:{ticks:{callback:v=>short(v)}},y:{ticks:{font:{size:11}}}}})});
+}
+
+function rankTable(tableId, selId, list, render, firstCols){
+  const k=$(selId).value;
+  list.forEach(g=>g.likes_k = g.views ? +(g.likes/g.views*1000).toFixed(1) : 0);
+  const rows=[...list].sort((a,b)=>b[k]-a[k]);
+  const cols=[["videos","الفيديوهات"],...M.map(m=>[m,AR[m]]),["avg_views","متوسط المشاهدات"],["er","التفاعل %"],["likes_k","إعجابات لكل 1000 مشاهدة"],["d24_views","نمو 24س"],["cost","التكلفة"],["cpm","تكلفة الألف مشاهدة"],["cpe","تكلفة التفاعل"]];
+  const cell=(g,c)=>c==="er"?g.er+"%":c==="d24_views"?(g[c]?`<span class="up">+${fmt(g[c])}</span>`:"—"):["cost","cpm","cpe"].includes(c)?money(g[c]):fmt(g[c]);
+  $(tableId).innerHTML = `<tr><th>#</th>${firstCols.map(h=>`<th>${h}</th>`).join("")}${cols.map(([c,l])=>`<th class="${c===k?"sorted":""}" onclick="$('${selId}').value='${c}';${render}()">${l}</th>`).join("")}</tr>`
+    + (rows.length? rows.map((g,i)=>`<tr><td><span class="rank ${i<3?"r"+(i+1):""}">${i+1}</span></td>${g._first}
+      ${cols.map(([c])=>c==="cost"&&g._costEdit?`<td class="n edit" title="اضغط لإدخال التكلفة" onclick="${g._costEdit}">${cell(g,c)}</td>`:`<td class="n">${cell(g,c)}</td>`).join("")}</tr>`).join("")
+    : `<tr><td colspan="14" class="empty">لا توجد بيانات بعد — أضف روابط من تبويب «إضافة روابط»</td></tr>`);
+}
+function renderInfl(){
+  if(!S) return;
+  $("inflNote").textContent = `للمقارنة: وسيط معدل التفاعل بين مؤثرين هذه الحملة ${S.totals.median_er}%`;
+  S.influencers.forEach(g=>{ g._first=`<td><b>${esc(who(g))}</b><div class="sub handle">@${esc(g.author)}</div></td><td class="sub">${esc(g.clients.join("، ")||"—")}</td>`;
+    g._costEdit=`setInflCost('${esc(g.author)}')`; });
+  rankTable("tInfl","rankBy",S.influencers,"renderInfl",["المؤثر","العميل"]);
+}
+async function setInflCost(author){
+  const g=S.influencers.find(x=>x.author===author);
+  const v=prompt(`تكلفة ${who(g)} في هذه الحملة (ريال):`, g.cost||""); if(v===null) return;
+  try{ await api(`/api/campaigns/${cid}/influencer_cost`,{method:"POST",body:JSON.stringify({author,cost:v})}); loadSummary(); }catch(e){ toast(e.message); }
+}
+function renderClients(){
+  if(!S) return;
+  S.clients.forEach(g=>g._first=`<td><b>${esc(g.key)}</b></td><td class="n">${g.influencers}</td>`);
+  rankTable("tClients","rankByC",S.clients,"renderClients",["العميل","المؤثرون"]);
+}
+
+function renderVideos(){
+  if(!S) return; const q=$("vSearch").value.trim().toLowerCase(), f=$("vFilter").value, cl=$("vClient").value, s=sort.videos;
+  let rows=S.videos.filter(v=>(!f||v.status===f)&&(!cl||(v.client||"بدون عميل")===cl)
+    &&(!q||[v.author,v.nickname,v.name,v.descr].some(x=>(x||"").toLowerCase().includes(q))));
+  rows.sort((a,b)=>{const x=a[s.k],y=b[s.k]; return (typeof x==="string"||typeof y==="string"?String(x??"").localeCompare(String(y??"")):(x-y))*s.d;});
+  $("vCount").textContent=`${rows.length} من ${S.videos.length} فيديو`;
+  const cols=[["name","المؤثر"],["client","العميل"],["posted_at","النشر"],...M.map(m=>[m,AR[m]]),["er","التفاعل %"],["d24_views","نمو 24س"],["status","الحالة"]];
+  const badge=v=>v.status==="ok"?`<span class="badge b-ok">تم</span>`:v.status==="error"&&v.snapshots?`<span class="badge b-pend" title="${esc(v.error)}">آخر بيانات محفوظة</span>`:v.status==="error"?`<span class="badge b-err" title="${esc(v.error)}">${esc(v.error||"خطأ")}</span>`:`<span class="badge b-pend">بانتظار الجلب</span>`;
+  $("tVideos").innerHTML=`<tr>${cols.map(([c,l])=>`<th class="${c===s.k?"sorted":""}" onclick="sortVideos('${c}')">${l}${c===s.k?(s.d<0?" ↓":" ↑"):""}</th>`).join("")}<th></th></tr>`
+    + (rows.length? rows.map(v=>`<tr>
+      <td><b>${esc(v.name||v.nickname||"")}</b> <span class="sub handle">@${esc(v.author||"…")}</span>${v.gone?`<span class="flag bad">حُذف أو صار خاص بعد النشر</span>`:""}<div class="desc" title="${esc(v.descr)}">${esc(v.descr)}</div></td>
+      <td class="sub">${esc(v.client||"—")}</td>
+      <td class="n sub">${esc(v.posted_at||"")}</td>
+      ${M.map(m=>`<td class="n">${fmt(v[m])}</td>`).join("")}
+      <td class="n">${v.er}%</td><td class="n">${v.d24_views?`<span class="up">+${fmt(v.d24_views)}</span>`:"—"}</td>
+      <td>${badge(v)}</td>
+      <td><a class="link" href="${esc(v.url)}" target="_blank">فتح</a> &nbsp; <a class="link" onclick="editVideo(${v.id})" href="javascript:void 0">تعديل</a> &nbsp; <a class="link" style="color:var(--bad)" onclick="delVideo(${v.id})" href="javascript:void 0">حذف</a></td></tr>`).join("")
+    : `<tr><td colspan="12" class="empty">لا توجد فيديوهات</td></tr>`);
+}
+function sortVideos(k){ const s=sort.videos; s.d = s.k===k ? -s.d : -1; s.k=k; renderVideos(); }
+
+// ---- compare
+function cmpItems(){
+  const mode=$("cmpMode").value;
+  if(mode==="author") return S.influencers.map(g=>({key:g.author,label:who(g),row:g}));
+  if(mode==="client") return S.clients.map(g=>({key:g.key,label:g.key,row:g}));
+  return S.videos.filter(v=>v.snapshots).map(v=>({key:String(v.id),label:(v.name||"@"+(v.author||""))+" · "+(v.descr||"").slice(0,22),row:v}));
+}
+function renderCompareChips(){
+  if(!S) return; const items=cmpItems();
+  for(const k of [...cmpSel]) if(!items.some(i=>i.key===k)) cmpSel.delete(k);
+  if(!cmpSel.size) items.slice(0,3).forEach(i=>cmpSel.add(i.key));
+  $("cmpChips").innerHTML = items.map(i=>`<span class="chip ${cmpSel.has(i.key)?"on":""}" onclick="toggleCmp('${esc(i.key)}')">${esc(i.label)}</span>`).join("") || `<span class="sub">لا توجد بيانات</span>`;
+  drawCompare();
+}
+function toggleCmp(k){ cmpSel.has(k)?cmpSel.delete(k):cmpSel.add(k); renderCompareChips(); }
+async function drawCompare(){
+  if(!S) return; const mode=$("cmpMode").value, m=$("cmpMetric").value;
+  const items=cmpItems().filter(i=>cmpSel.has(i.key));
+  if(!groupTL[mode]) groupTL[mode]=await api(`/api/campaigns/${cid}/timeline?group=${mode}`);
+  const tl=groupTL[mode];
+  const val=(g)=> !g?null : m==="er" ? (g.views?+((g.likes+g.comments+g.shares+g.saves)/g.views*100).toFixed(2):0) : g[m];
+  chart("cCmpLine",{type:"line",data:{labels:tl.map(p=>tsLabel(p.ts)),
+    datasets:items.map((it,i)=>({label:it.label,data:tl.map(p=>val(p.groups[it.key])),borderColor:PALETTE[i%PALETTE.length],backgroundColor:PALETTE[i%PALETTE.length],tension:.3,pointRadius:2,spanGaps:true}))},
+    options:baseOpts()});
+  chart("cCmpBar",{type:"bar",data:{labels:items.map(i=>i.label.slice(0,22)),
+    datasets:[{label:AR[m],data:items.map(i=>i.row[m]),backgroundColor:items.map((_,i)=>PALETTE[i%PALETTE.length]),borderRadius:6}]},
+    options:baseOpts({plugins:{legend:{display:false}}})});
+  const cols=[...M,"er"];
+  const best=Object.fromEntries(cols.map(c=>[c,Math.max(...items.map(i=>i.row[c]))]));
+  $("tCmp").innerHTML=`<tr><th>العنصر</th>${cols.map(c=>`<th>${AR[c]}</th>`).join("")}</tr>`+items.map(i=>`<tr><td>${esc(i.label)}</td>${cols.map(c=>
+    `<td class="n" style="${items.length>1&&i.row[c]===best[c]?"color:var(--good);font-weight:700":""}">${c==="er"?i.row[c]+"%":fmt(i.row[c])}</td>`).join("")}</tr>`).join("");
+}
+
+// ---- actions
+async function newCampaign(){
+  const name=prompt("اسم الحملة الجديدة:"); if(!name||!name.trim()) return;
+  const r=await api("/api/campaigns",{method:"POST",body:JSON.stringify({name})});
+  try{localStorage.cid=r.id}catch(e){}
+  await loadCampaigns(r.id); document.querySelector('nav a[data-t="add"]').click();
+}
+async function renameCampaign(){
+  const name=prompt("الاسم الجديد:",S.campaign.name); if(!name) return;
+  await api(`/api/campaigns/${cid}/update`,{method:"POST",body:JSON.stringify({name})}); loadCampaigns();
+}
+async function toggleArchive(){
+  await api(`/api/campaigns/${cid}/update`,{method:"POST",body:JSON.stringify({archived:!S.campaign.archived})}); loadCampaigns();
+}
+async function deleteCampaign(){
+  if(!confirm(`حذف حملة «${S.campaign.name}» وكل بياناتها وسجلها نهائيًا؟`)) return;
+  await api(`/api/campaigns/${cid}`,{method:"DELETE"}); cid=null; try{localStorage.removeItem("cid")}catch(e){}; loadCampaigns();
+}
+async function addUrls(){
+  try{ const r=await api(`/api/campaigns/${cid}/videos`,{method:"POST",body:JSON.stringify({text:$("urls").value})});
+    $("addMsg").textContent=`أُضيف ${r.added} رابط${r.skipped?` · ${r.skipped} مكرر تم تجاهله`:""}${r.added&&!r.started?" · سيتم جلبها مع التحديث القادم":""}`;
+    $("urls").value=""; await loadSummary(); pollStatus(); }
+  catch(e){ toast(e.message); }
+}
+// ---- account analysis
+let ACCTS=[], acctSort={k:"views",d:-1}, acctOpen=new Set(), acctTimer=null, acctWas=false;
+async function loadAccounts(){
+  const r=await api("/api/accounts"); ACCTS=r.accounts; renderAccounts();
+  const s=r.status; $("acctProg").textContent = s.running ? `جارٍ التحليل ${s.done}/${s.total} — @${s.current}` : "";
+  clearTimeout(acctTimer);
+  if(s.running || acctWas) acctTimer=setTimeout(loadAccounts, 4000);
+  acctWas=s.running;
+}
+function renderAccounts(){
+  const w=$("acctWin").value, q=$("acctSearch").value.trim().toLowerCase(), s=acctSort;
+  const val=(a,k)=> k==="followers"?a.followers : k==="last_post"?(a.last_post||"") : k.startsWith("c_")?(a.comments&&a.comments.n?a.comments[k.slice(2)]:-1) : a[w]?a[w][k]:-1;
+  const rows=ACCTS.filter(a=>!q||[a.handle,a.name,a.nickname].some(x=>(x||"").toLowerCase().includes(q)))
+    .sort((a,b)=>{const x=val(a,s.k),y=val(b,s.k); return (typeof x==="string"?String(x).localeCompare(y):(x??-1)-(y??-1))*s.d;});
+  const cols=[["followers","المتابعين"],["last_post","آخر نشر"],["views","متوسط المشاهدات"],["median_views","وسيط المشاهدات"],["likes","الإعجابات"],["comments","التعليقات"],["shares","المشاركات"],["saves","الحفظ"],["er","التفاعل %"],["reach","المشاهدات ÷ المتابعين %"],["c_n","تعليقات مفحوصة"],["c_unique","حسابات علّقت"],["c_arabic","تعليقات عربية %"],["c_emoji_only","إيموجي فقط %"]];
+  const cell=(a,k)=>{ if(k==="followers") return fmt(a.followers); if(k==="last_post") return esc(a.last_post||"—");
+    if(k.startsWith("c_")){ const c=a.comments; if(!c||!c.n) return "—"; const x=c[k.slice(2)];
+      return ["c_n","c_unique"].includes(k) ? fmt(x) : x+"%"; }
+    const x=a[w]; if(!x) return "—"; if(k==="er") return x.er+"%"; if(k==="reach") return x.reach==null?"—":x.reach+"%"; return fmt(x[k]); };
+  const day=t=>t?new Date(t*1000).toLocaleDateString("en-GB"):"";
+  const detail=a=>{ const c=a.comments||{};
+    return `<tr class="sub-row"><td colspan="18">
+      <div class="row" style="margin:6px 0"><b>آخر ${a.videos.length} فيديوهات</b>${a.post_gap_days!=null?`<span class="sub">· ينشر كل ${a.post_gap_days} يوم تقريبًا</span>`:""}<div class="spacer"></div>
+        <button class="light" onclick="location.href='/api/accounts/${a.id}/report'">تنزيل تقرير Excel لهذا المؤثر</button></div>
+      <table><tr><th>#</th><th>تاريخ النشر</th><th>المشاهدات</th><th>الإعجابات</th><th>التعليقات</th><th>المشاركات</th><th>الحفظ</th><th>التفاعل %</th><th>إعجابات لكل 1000 مشاهدة</th><th></th></tr>
+        ${a.videos.map((v,i)=>`<tr><td>${i+1}</td><td class="n">${day(v.ts)}</td>${["views","likes","comments","shares","saves"].map(m=>`<td class="n">${fmt(v[m])}</td>`).join("")}
+          <td class="n">${v.views?((v.likes+v.comments+v.shares+v.saves)/v.views*100).toFixed(2):0}%</td><td class="n">${v.views?(v.likes/v.views*1000).toFixed(1):"—"}</td>
+          <td><a class="link" target="_blank" href="${esc(v.url)}">فتح</a></td></tr>`).join("")}</table>
+      ${c.n?`<div class="row" style="margin:16px 0 6px"><b>التعليقات (${c.n} تعليق من ${c.unique} حساب مختلف، آخر 5 فيديوهات)</b></div>
+      ${c.repeat&&c.repeat.length?`<div class="sub" style="margin-bottom:8px">حسابات علّقت أكثر من مرة: ${c.repeat.map(([u,k])=>`<span class="handle">@${esc(u)}</span> (${k})`).join("، ")}</div>`:`<div class="sub" style="margin-bottom:8px">ما فيه حساب علّق أكثر من مرة.</div>`}
+      <div class="tablewrap" style="max-height:320px"><table><tr><th>فيديو</th><th>التاريخ</th><th>الحساب</th><th>التعليق</th><th>إعجابات</th></tr>
+        ${(c.items||[]).map(x=>`<tr><td>${x.v}</td><td class="n sub">${day(x.ts)}</td><td class="sub handle">@${esc(x.user)}</td><td style="white-space:normal">${esc(x.text)}</td><td class="n">${fmt(x.likes)}</td></tr>`).join("")}</table></div>`
+      :`<div class="sub" style="margin-top:12px">ما فيه تعليقات مفحوصة. اضغط «إعادة فحص الكل» عشان يجيب التعليقات.</div>`}
+    </td></tr>`; };
+  const badge=a=>a.status==="ok"?`<span class="badge b-ok">تم</span>`:a.status==="error"?`<span class="badge b-err" title="${esc(a.error)}">${esc(a.error||"خطأ")}</span>`:`<span class="badge b-pend">بانتظار التحليل</span>`;
+  $("tAcct").innerHTML=`<tr><th>الحساب</th>${cols.map(([k,l])=>`<th class="${k===s.k?"sorted":""}" onclick="sortAcct('${k}')">${l}${k===s.k?(s.d<0?" ↓":" ↑"):""}</th>`).join("")}<th>الحالة</th><th></th></tr>`
+   + (rows.length?rows.map(a=>`<tr><td><b>${esc(a.name||a.nickname||"")}</b><div class="sub handle">@${esc(a.handle)}</div></td>
+      ${cols.map(([k])=>`<td class="n">${cell(a,k)}</td>`).join("")}<td>${badge(a)}</td>
+      <td>${a.videos.length?`<a class="link" href="javascript:void 0" onclick="toggleAcct(${a.id})">${acctOpen.has(a.id)?"إخفاء":"التفاصيل"}</a> &nbsp; <a class="link" href="/api/accounts/${a.id}/report">تقرير</a> &nbsp; `:""}<a class="link" target="_blank" href="https://www.tiktok.com/@${esc(a.handle)}">فتح</a> &nbsp; <a class="link" href="javascript:void 0" onclick="renameAcct(${a.id})">اسم</a> &nbsp; <a class="link" style="color:var(--bad)" href="javascript:void 0" onclick="delAcct(${a.id})">حذف</a></td></tr>`
+      + (acctOpen.has(a.id)?detail(a):"")).join("")
+   : `<tr><td colspan="18" class="empty">ما فيه حسابات بعد — اكتبها فوق واضغط «تحليل»</td></tr>`);
+}
+function sortAcct(k){ acctSort.d = acctSort.k===k ? -acctSort.d : -1; acctSort.k=k; renderAccounts(); }
+function toggleAcct(id){ acctOpen.has(id)?acctOpen.delete(id):acctOpen.add(id); renderAccounts(); }
+async function addAccounts(){
+  try{ const r=await api("/api/accounts",{method:"POST",body:JSON.stringify({text:$("acctText").value})});
+    $("acctMsg").textContent=`أُضيف ${r.added} حساب${r.skipped?` · ${r.skipped} موجود مسبقًا`:""}`; $("acctText").value=""; acctWas=true; loadAccounts(); }
+  catch(e){ toast(e.message); }
+}
+async function refreshAccounts(failed){ try{ await api("/api/accounts/refresh",{method:"POST",body:JSON.stringify({failed_only:failed})}); toast("بدأ الفحص…"); acctWas=true; loadAccounts(); }catch(e){ toast(e.message); } }
+async function renameAcct(id){ const a=ACCTS.find(x=>x.id===id); const name=prompt("اسم المؤثر:",a.name||a.nickname||""); if(name===null) return;
+  await api(`/api/accounts/${id}`,{method:"POST",body:JSON.stringify({name})}); loadAccounts(); }
+async function delAcct(id){ if(!confirm("حذف هذا الحساب من التحليل؟")) return; await api(`/api/accounts/${id}`,{method:"DELETE"}); loadAccounts(); }
+
+async function importXlsx(){
+  const f=$("xfile").files[0]; if(!f) return toast("اختر ملف Excel أولًا");
+  const buf=new Uint8Array(await f.arrayBuffer()); let bin=""; for(let i=0;i<buf.length;i+=32768) bin+=String.fromCharCode(...buf.subarray(i,i+32768));
+  try{ const r=await api(`/api/campaigns/${cid}/import`,{method:"POST",body:JSON.stringify({data:btoa(bin)})});
+    $("impMsg").textContent=`أُضيف ${r.added} رابط${r.skipped?` · ${r.skipped} مكرر تم تجاهله`:""}`;
+    $("xfile").value=""; await loadSummary(); pollStatus(); }
+  catch(e){ toast(e.message); }
+}
+async function editVideo(id){
+  const v=S.videos.find(x=>x.id===id);
+  const name=prompt("اسم المؤثر:",v.name||""); if(name===null) return;
+  const client=prompt("العميل:",v.client||""); if(client===null) return;
+  const cost=prompt("تكلفة هذا الفيديو (ريال) — اتركها فاضية إذا ما تعرفها:",v.cost||""); if(cost===null) return;
+  await api(`/api/videos/${id}`,{method:"POST",body:JSON.stringify({name,client,cost})}); loadSummary();
+}
+async function delVideo(id){ if(!confirm("حذف هذا الفيديو وسجله من الحملة؟")) return; await api(`/api/videos/${id}`,{method:"DELETE"}); loadSummary(); }
+async function refreshNow(){ try{ await api(`/api/campaigns/${cid}/refresh`,{method:"POST"}); toast("بدأ التحديث…"); pollStatus(); }catch(e){ toast(e.message); } }
+async function retryFailed(){ try{ await api(`/api/campaigns/${cid}/refresh`,{method:"POST",body:JSON.stringify({failed_only:true})}); toast("جارٍ إعادة جلب الروابط المتعثرة…"); pollStatus(); }catch(e){ toast(e.message); } }
+function exportXlsx(){ if(cid) location.href=`/api/campaigns/${cid}/export`; }
+async function openSettings(){ const s=await api("/api/status"); $("interval").value=String(s.interval_hours); $("dlgSettings").showModal(); }
+async function saveSettings(){ await api("/api/settings",{method:"POST",body:JSON.stringify({interval_hours:+$("interval").value})}); $("dlgSettings").close(); toast("تم الحفظ"); pollStatus(); }
+
+let wasRunning=false, pollTimer=null;
+async function pollStatus(){
+  clearTimeout(pollTimer);
+  try{
+    const s=await api("/api/status");
+    $("prog").style.display=s.running?"":"none"; $("btnRefresh").disabled=s.running;
+    shareUrl=s.public_url; $("btnShare").style.display=shareUrl?"":"none";
+    if(s.running){ $("prog").firstElementChild.style.width=(s.total?s.done/s.total*100:0)+"%";
+      $("statusText").textContent=`جارٍ التحديث ${s.done}/${s.total}`; }
+    else { const last=s.last_finished||s.last_auto_refresh;
+      $("statusText").textContent=(last?`آخر تحديث: ${last.slice(5,16)}`:"")+` · تلقائي كل ${s.interval_hours} س`; }
+    if(wasRunning && !s.running){ await loadCampaigns(); toast("اكتمل التحديث"); }
+    else if(s.running && s.done % 5 === 0) loadSummary();
+    wasRunning=s.running;
+    pollTimer=setTimeout(pollStatus, s.running?2500:30000);
+  }catch(e){ $("statusText").textContent="الخادم غير متصل"; pollTimer=setTimeout(pollStatus,10000); }
+}
+
+window.__startApp=(async()=>{ await loadCampaigns(); try{ const t=localStorage.tab; if(t) document.querySelector(`nav a[data-t="${t}"]`)?.click(); }catch(e){} pollStatus(); });
+</script>
+</body>
+</html>
