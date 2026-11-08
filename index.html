@@ -94,8 +94,11 @@ body.static [onclick*="copyShare"],body.static [onclick*="exportXlsx"],body.stat
 body.static [onclick*="editVideo"],body.static [onclick*="delVideo"],body.static [onclick*="renameAcct"],
 body.static [onclick*="delAcct"],body.static [onclick*="retryFailed"],body.static [onclick*="refreshAccounts"],
 body.static [onclick*="addAccounts"],body.static [href*="/api/"],body.static [onclick*="/api/"],
+body.static [onclick*="importXlsx"],body.static [onclick*="addUrls"],body.static [onclick*="setInflCost"],body.static #logoutLink,
 body.static #t-accounts > .card:first-child,body.static #prog{display:none!important}
 body.static td.edit{pointer-events:none;text-decoration:none}
+body.live #logoutLink,body.live #btnShare{display:none!important}
+#gate form p{margin-bottom:14px}
 </style>
 <div id="gate"><form id="gateForm"><h1>لوحة أداء الحملات</h1><p>أدخل كلمة المرور</p>
 <div class="e" id="gateErr">كلمة المرور غير صحيحة</div>
@@ -123,13 +126,46 @@ body.static td.edit{pointer-events:none;text-decoration:none}
       throw new Error("هذه النسخة للعرض فقط");
     };
   }
+  // live mode: while the PC is on, every call goes to it (full editing); otherwise the encrypted snapshot (view only)
+  async function tryLive(base, pw){
+    if (!base) return false;
+    const X = {"X-Pass": encodeURIComponent(pw)};
+    try {
+      const ctl = new AbortController(); setTimeout(() => ctl.abort(), 7000);
+      const r = await fetch(base + "/api/status", {headers: X, signal: ctl.signal});
+      if (!r.ok) return false;
+    } catch (e) { return false; }
+    window.__STATIC__ = async (url, opt = {}) => {
+      const r = await fetch(base + url, {...opt, headers: {"Content-Type": "application/json", ...X}});
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || "خطأ"); return j;
+    };
+    window.__DL__ = async (url) => {
+      try {
+        const r = await fetch(base + url, {headers: X});
+        if (!r.ok) throw new Error();
+        const cd = r.headers.get("Content-Disposition") || "", m = cd.match(/filename\*=UTF-8''([^;]+)/);
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(await r.blob()); a.download = m ? decodeURIComponent(m[1]) : "report.xlsx"; a.click();
+      } catch (e) { toast("تعذر التنزيل — تأكد إن الجهاز شغّال"); }
+    };
+    return true;
+  }
+  function badge(live){
+    const b = document.createElement("div");
+    b.className = "status"; b.style.cssText = "background:rgba(255,255,255,.12);padding:4px 10px;border-radius:20px";
+    b.textContent = live ? "🟢 متصل بالجهاز — تقدر تضيف وتحدّث" : "⚪ الجهاز مطفي — عرض آخر أرقام فقط";
+    document.querySelector("header h1").after(b);
+  }
   async function go(pw, silent){
     try {
       const D = await open(pw);
-      window.__STATIC__ = serve(D);
-      document.body.classList.add("static");
       try { localStorage.gatePw = pw; } catch (e) {}
+      const live = await tryLive(D.live_url, pw);
+      if (!live) { window.__STATIC__ = serve(D); document.body.classList.add("static"); }
+      else document.body.classList.add("live");
       document.getElementById("gate").remove();
+      badge(live);
       window.__startApp && window.__startApp();
     } catch (e) {
       if (!silent) document.getElementById("gateErr").style.display = "block";
@@ -242,7 +278,7 @@ body.static td.edit{pointer-events:none;text-decoration:none}
         <div class="spacer"></div>
         <button class="light" onclick="refreshAccounts(true)">إعادة فحص المتعثرة</button>
         <button class="light" onclick="refreshAccounts(false)">إعادة فحص الكل</button>
-        <button class="light" onclick="location.href='/api/accounts/export'">تصدير Excel</button>
+        <button class="light" onclick="dl('/api/accounts/export')">تصدير Excel</button>
       </div>
       <p class="sub" style="margin:-4px 0 12px">التفاعل = (إعجابات + تعليقات + مشاركات + حفظ) ÷ المشاهدات · الوسيط = المشاهدات في منتصف الفيديوهات لما ترتبها · «تعليقات عربية» = تعليقات فيها حروف عربية · «إيموجي فقط» = تعليقات بدون أي حروف · اضغط «التفاصيل» تشوف كل فيديو وكل تعليق ومين كتبه.</p>
       <div class="tablewrap"><table id="tAcct"></table></div>
@@ -284,7 +320,7 @@ body.static td.edit{pointer-events:none;text-decoration:none}
   <hr style="border:0;border-top:1px solid var(--line);margin:20px 0">
   <p style="margin-top:0">تغيير كلمة المرور:</p>
   <div class="row"><input type="password" id="pwOld" placeholder="الحالية"><input type="password" id="pwNew" placeholder="الجديدة (6 أحرف أو أكثر)"></div>
-  <div class="row"><button class="light" onclick="changePw()">تغيير</button><div class="spacer"></div><a class="link" href="/logout">تسجيل الخروج</a></div>
+  <div class="row"><button class="light" onclick="changePw()">تغيير</button><div class="spacer"></div><a class="link" id="logoutLink" href="/logout">تسجيل الخروج</a></div>
 </dialog>
 <div class="toast" id="toast"></div>
 
@@ -512,7 +548,7 @@ function renderAccounts(){
   const detail=a=>{ const c=a.comments||{};
     return `<tr class="sub-row"><td colspan="18">
       <div class="row" style="margin:6px 0"><b>آخر ${a.videos.length} فيديوهات</b>${a.post_gap_days!=null?`<span class="sub">· ينشر كل ${a.post_gap_days} يوم تقريبًا</span>`:""}<div class="spacer"></div>
-        <button class="light" onclick="location.href='/api/accounts/${a.id}/report'">تنزيل تقرير Excel لهذا المؤثر</button></div>
+        <button class="light" onclick="dl('/api/accounts/${a.id}/report')">تنزيل تقرير Excel لهذا المؤثر</button></div>
       <table><tr><th>#</th><th>تاريخ النشر</th><th>المشاهدات</th><th>الإعجابات</th><th>التعليقات</th><th>المشاركات</th><th>الحفظ</th><th>التفاعل %</th><th>إعجابات لكل 1000 مشاهدة</th><th></th></tr>
         ${a.videos.map((v,i)=>`<tr><td>${i+1}</td><td class="n">${day(v.ts)}</td>${["views","likes","comments","shares","saves"].map(m=>`<td class="n">${fmt(v[m])}</td>`).join("")}
           <td class="n">${v.views?((v.likes+v.comments+v.shares+v.saves)/v.views*100).toFixed(2):0}%</td><td class="n">${v.views?(v.likes/v.views*1000).toFixed(1):"—"}</td>
@@ -527,7 +563,7 @@ function renderAccounts(){
   $("tAcct").innerHTML=`<tr><th>الحساب</th>${cols.map(([k,l])=>`<th class="${k===s.k?"sorted":""}" onclick="sortAcct('${k}')">${l}${k===s.k?(s.d<0?" ↓":" ↑"):""}</th>`).join("")}<th>الحالة</th><th></th></tr>`
    + (rows.length?rows.map(a=>`<tr><td><b>${esc(a.name||a.nickname||"")}</b><div class="sub handle">@${esc(a.handle)}</div></td>
       ${cols.map(([k])=>`<td class="n">${cell(a,k)}</td>`).join("")}<td>${badge(a)}</td>
-      <td>${a.videos.length?`<a class="link" href="javascript:void 0" onclick="toggleAcct(${a.id})">${acctOpen.has(a.id)?"إخفاء":"التفاصيل"}</a> &nbsp; <a class="link" href="/api/accounts/${a.id}/report">تقرير</a> &nbsp; `:""}<a class="link" target="_blank" href="https://www.tiktok.com/@${esc(a.handle)}">فتح</a> &nbsp; <a class="link" href="javascript:void 0" onclick="renameAcct(${a.id})">اسم</a> &nbsp; <a class="link" style="color:var(--bad)" href="javascript:void 0" onclick="delAcct(${a.id})">حذف</a></td></tr>`
+      <td>${a.videos.length?`<a class="link" href="javascript:void 0" onclick="toggleAcct(${a.id})">${acctOpen.has(a.id)?"إخفاء":"التفاصيل"}</a> &nbsp; <a class="link" href="javascript:void 0" onclick="dl('/api/accounts/${a.id}/report')">تقرير</a> &nbsp; `:""}<a class="link" target="_blank" href="https://www.tiktok.com/@${esc(a.handle)}">فتح</a> &nbsp; <a class="link" href="javascript:void 0" onclick="renameAcct(${a.id})">اسم</a> &nbsp; <a class="link" style="color:var(--bad)" href="javascript:void 0" onclick="delAcct(${a.id})">حذف</a></td></tr>`
       + (acctOpen.has(a.id)?detail(a):"")).join("")
    : `<tr><td colspan="18" class="empty">ما فيه حسابات بعد — اكتبها فوق واضغط «تحليل»</td></tr>`);
 }
@@ -561,7 +597,9 @@ async function editVideo(id){
 async function delVideo(id){ if(!confirm("حذف هذا الفيديو وسجله من الحملة؟")) return; await api(`/api/videos/${id}`,{method:"DELETE"}); loadSummary(); }
 async function refreshNow(){ try{ await api(`/api/campaigns/${cid}/refresh`,{method:"POST"}); toast("بدأ التحديث…"); pollStatus(); }catch(e){ toast(e.message); } }
 async function retryFailed(){ try{ await api(`/api/campaigns/${cid}/refresh`,{method:"POST",body:JSON.stringify({failed_only:true})}); toast("جارٍ إعادة جلب الروابط المتعثرة…"); pollStatus(); }catch(e){ toast(e.message); } }
-function exportXlsx(){ if(cid) location.href=`/api/campaigns/${cid}/export`; }
+function exportXlsx(){ if(cid) dl(`/api/campaigns/${cid}/export`); }
+// downloads go through one place so the GitHub copy can fetch them from the live PC with its password header
+function dl(url){ if(window.__DL__) return window.__DL__(url); location.href=url; }
 async function openSettings(){ const s=await api("/api/status"); $("interval").value=String(s.interval_hours); $("dlgSettings").showModal(); }
 async function saveSettings(){ await api("/api/settings",{method:"POST",body:JSON.stringify({interval_hours:+$("interval").value})}); $("dlgSettings").close(); toast("تم الحفظ"); pollStatus(); }
 
